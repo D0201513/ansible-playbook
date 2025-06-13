@@ -1,10 +1,41 @@
 - name: Patch system and notify
   hosts: all
   become: yes
+  become_method: sudo
   tasks:
+
+    - name: Ensure update.sh is executable
+      file:
+        path: update.sh
+        mode: '0755'
 
     - name: Run update script
       script: update.sh
+      register: update_result
+      ignore_errors: no
+
+    - name: Show update result stdout
+      debug:
+        var: update_result.stdout_lines
+
+    - name: Show update result stderr (if any)
+      debug:
+        var: update_result.stderr_lines
+
+    - name: Ensure notify.sh is executable
+      file:
+        path: notify.sh
+        mode: '0755'
 
     - name: Run notify script
       script: notify.sh
+      register: notify_result
+      ignore_errors: no
+
+    - name: Show notify result stdout
+      debug:
+        var: notify_result.stdout_lines
+
+    - name: Show notify result stderr (if any)
+      debug:
+        var: notify_result.stderr_lines
