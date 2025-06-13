@@ -81,3 +81,4 @@ else
     echo "⚠️ 'mail' command not found. Email not sent."
 fi
 
+exit 0
