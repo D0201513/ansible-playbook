@@ -75,4 +75,9 @@ $(cat $LOG_FILE)
 "
 
 # Send email
-echo "$BODY" | mail -s "$SUBJECT" "$TO"
+if command -v mail >/dev/null 2>&1; then
+    echo "$BODY" | mail -s "$SUBJECT" "$TO" || echo "⚠️ Failed to send email."
+else
+    echo "⚠️ 'mail' command not found. Email not sent."
+fi
+
