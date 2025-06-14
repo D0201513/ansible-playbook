@@ -1,3 +1,4 @@
+---
 - name: Patch system and notify
   hosts: all
   become: yes
@@ -12,16 +13,15 @@
         src: update.sh
         dest: "{{ update_script_path }}"
         mode: '0755'
-        diff: false  # ✅ Suppress diff output
 
     - name: ▶️ Run update script asynchronously
       shell: bash "{{ update_script_path }}"
-      async: 600              # ⏳ Run up to 10 minutes
-      poll: 10                # 🔁 Check every 10 seconds
+      async: 600
+      poll: 10
       register: update_result
       ignore_errors: yes
 
-    - name: 🧾 Print update script result
+    - name: 🧞 Print update script result
       debug:
         var: update_result
 
@@ -39,14 +39,13 @@
         src: notify.sh
         dest: "{{ notify_script_path }}"
         mode: '0755'
-        diff: false  # ✅ Suppress diff output
 
     - name: ▶️ Run notify script
       shell: bash "{{ notify_script_path }}"
       register: notify_result
       ignore_errors: yes
 
-    - name: 🧾 Print notify script result
+    - name: 🧞 Print notify script result
       debug:
         var: notify_result
 
