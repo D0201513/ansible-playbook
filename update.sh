@@ -14,6 +14,7 @@ fi
 TIMESTAMP=$(date +%F_%H-%M-%S)
 LOG_FILE="/tmp/patch_report_${TIMESTAMP}.log"
 
+# Main logic with error handling block
 {
     echo "=== 📋 Patch Report: $(date) on $(hostname) ==="
     echo ""
@@ -21,7 +22,7 @@ LOG_FILE="/tmp/patch_report_${TIMESTAMP}.log"
     echo "🔍 Detecting OS..."
     if [ -f /etc/os-release ]; then
         . /etc/os-release
-        OS_ID=$(echo "$ID" | tr '[:upper:]' '[:lower:]')
+        OS_ID=$(echo "${ID:-unknown}" | tr '[:upper:]' '[:lower:]')
         echo "✅ Detected OS: $OS_ID"
     else
         echo "❌ OS detection failed."
@@ -32,8 +33,18 @@ LOG_FILE="/tmp/patch_report_${TIMESTAMP}.log"
     case "$OS_ID" in
         ubuntu|debian)
             echo "📦 Running apt update and upgrade..."
-            apt update -q -y
-            UPGRADE_OUTPUT=$(apt -y upgrade)
+            apt update -yq || echo "⚠️ apt update failed"
+            UPGRADE_OUTPUT=$(apt -y upgrade || true)
+            if echo "$UPGRADE_OUTPUT" | grep -q "0 upgraded"; then
+                echo "✅ No packages needed upgrading."
+            else
+                echo "✅ Some packages were upgraded."
+            fi
+            ;;
+        kali)
+            echo "📦 Running apt update and full-upgrade (Kali)..."
+            apt update -yq || echo "⚠️ apt update failed"
+            UPGRADE_OUTPUT=$(apt -y full-upgrade || true)
             if echo "$UPGRADE_OUTPUT" | grep -q "0 upgraded"; then
                 echo "✅ No packages needed upgrading."
             else
@@ -43,9 +54,9 @@ LOG_FILE="/tmp/patch_report_${TIMESTAMP}.log"
         centos|rhel|fedora)
             echo "📦 Running yum/dnf upgrade..."
             if command -v dnf >/dev/null 2>&1; then
-                UPDATE_OUTPUT=$(dnf -y upgrade)
+                UPDATE_OUTPUT=$(dnf -y upgrade || true)
             else
-                UPDATE_OUTPUT=$(yum -y update)
+                UPDATE_OUTPUT=$(yum -y update || true)
             fi
             if echo "$UPDATE_OUTPUT" | grep -q "No packages marked for update"; then
                 echo "✅ No packages needed upgrading."
@@ -62,7 +73,10 @@ LOG_FILE="/tmp/patch_report_${TIMESTAMP}.log"
     echo ""
     echo "✅ Patch update completed successfully at $(date)."
 
-} > "$LOG_FILE" 2>&1
+} > "$LOG_FILE" 2>&1 || {
+    echo "❌ Script failed. Check the log: $LOG_FILE" >&2
+    exit 1
+}
 
 # Prepare email content
 SUBJECT="✅ Patch Success on $(hostname)"
