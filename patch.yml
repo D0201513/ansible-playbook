@@ -4,15 +4,15 @@
   become_method: sudo
   tasks:
 
-    - name: Ensure update.sh is executable
-      file:
-        path: update.sh
+    - name: Copy update.sh to target machine
+      copy:
+        src: update.sh       # from Git repo
+        dest: /tmp/update.sh # location on remote system
         mode: '0755'
 
     - name: Run update script
-      script: update.sh
+      shell: /tmp/update.sh
       register: update_result
-      ignore_errors: no
 
     - name: Show update result stdout
       debug:
@@ -22,15 +22,15 @@
       debug:
         var: update_result.stderr_lines
 
-    - name: Ensure notify.sh is executable
-      file:
-        path: notify.sh
+    - name: Copy notify.sh to target machine
+      copy:
+        src: notify.sh
+        dest: /tmp/notify.sh
         mode: '0755'
 
     - name: Run notify script
-      script: notify.sh
+      shell: /tmp/notify.sh
       register: notify_result
-      ignore_errors: no
 
     - name: Show notify result stdout
       debug:
