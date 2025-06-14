@@ -1,59 +1,32 @@
----
-- name: Patch system and notify
+- name: 🚀 Patch and Notify
   hosts: all
-  become: yes
-  vars:
-    update_script_path: /tmp/update.sh
-    notify_script_path: /tmp/notify.sh
+  become: true
 
   tasks:
-
-    - name: 📤 Copy update script to remote host
+    - name: 📤 Copy update.sh
       copy:
         src: update.sh
-        dest: "{{ update_script_path }}"
+        dest: /tmp/update.sh
         mode: '0755'
+      diff: no
 
-    - name: ▶️ Run update script asynchronously
-      shell: bash "{{ update_script_path }}"
-      async: 600
-      poll: 10
-      register: update_result
-      ignore_errors: yes
-
-    - name: 🧞 Print update result summary (only status)
-      debug:
-        msg: "Update script finished with RC={{ update_result.rc }}"
-
-    - name: ❌ Fail if update script failed
-      fail:
-        msg: >-
-          ⚠️ Update script failed.
-          RC: {{ update_result.rc }}
-          STDOUT: {{ update_result.stdout | default('') }}
-          STDERR: {{ update_result.stderr | default('') }}
-      when: update_result.rc != 0
-
-    - name: 📤 Copy notify script to remote host
+    - name: 📤 Copy notify.sh
       copy:
         src: notify.sh
-        dest: "{{ notify_script_path }}"
+        dest: /tmp/notify.sh
         mode: '0755'
+      diff: no
 
-    - name: ▶️ Run notify script
-      shell: bash "{{ notify_script_path }}"
-      register: notify_result
-      ignore_errors: yes
+    - name: ▶️ Run update script
+      shell: bash /tmp/update.sh
 
-    - name: 🧞 Print notify script result
-      debug:
-        var: notify_result
+    - name: 📧 Send patch notification
+      shell: bash /tmp/notify.sh
 
-    - name: ❌ Fail if notify script failed
-      fail:
-        msg: >-
-          ⚠️ Notify script failed.
-          RC: {{ notify_result.rc }}
-          STDOUT: {{ notify_result.stdout | default('') }}
-          STDERR: {{ notify_result.stderr | default('') }}
-      when: notify_result.rc != 0
+    - name: 🧹 Cleanup scripts
+      file:
+        path: "/tmp/{{ item }}"
+        state: absent
+      loop:
+        - update.sh
+        - notify.sh
