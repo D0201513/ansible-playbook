@@ -21,9 +21,9 @@
       register: update_result
       ignore_errors: yes
 
-    - name: 🧞 Print update script result
+    - name: 🧞 Print update result summary (only status)
       debug:
-        var: update_result
+        msg: "Update script finished with RC={{ update_result.rc }}"
 
     - name: ❌ Fail if update script failed
       fail:
