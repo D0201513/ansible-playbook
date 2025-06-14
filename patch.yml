@@ -12,6 +12,8 @@
         src: update.sh
         dest: "{{ update_script_path }}"
         mode: '0755'
+        force: yes
+        diff: no     # ✅ Suppress showing file differences
 
     - name: ▶️ Run update script asynchronously
       shell: bash "{{ update_script_path }}"
@@ -20,17 +22,16 @@
       register: update_result
       ignore_errors: yes
 
-    - name: 🧞 Print update result summary (only status)
+    - name: ✅ Print update result status
       debug:
-        msg: "Update script finished with RC={{ update_result.rc }}"
+        msg: "✅ Update script finished with RC={{ update_result.rc }}"
 
     - name: ❌ Fail if update script failed
       fail:
         msg: >-
-          ⚠️ Update script failed.
+          ❌ Update script failed.
           RC: {{ update_result.rc }}
-          STDOUT: {{ update_result.stdout | default('') }}
-          STDERR: {{ update_result.stderr | default('') }}
+          STDERR: {{ update_result.stderr | default('N/A') }}
       when: update_result.rc != 0
 
     - name: 📤 Copy notify script to remote host
@@ -38,21 +39,22 @@
         src: notify.sh
         dest: "{{ notify_script_path }}"
         mode: '0755'
+        force: yes
+        diff: no     # ✅ Suppress showing file differences
 
     - name: ▶️ Run notify script
       shell: bash "{{ notify_script_path }}"
       register: notify_result
       ignore_errors: yes
 
-    - name: 🧞 Print notify script result
+    - name: 📬 Show notify script result
       debug:
-        var: notify_result
+        msg: "✅ Notify script finished with RC={{ notify_result.rc }}"
 
     - name: ❌ Fail if notify script failed
       fail:
         msg: >-
-          ⚠️ Notify script failed.
+          ❌ Notify script failed.
           RC: {{ notify_result.rc }}
-          STDOUT: {{ notify_result.stdout | default('') }}
-          STDERR: {{ notify_result.stderr | default('') }}
+          STDERR: {{ notify_result.stderr | default('N/A') }}
       when: notify_result.rc != 0
