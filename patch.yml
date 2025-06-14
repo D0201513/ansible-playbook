@@ -13,7 +13,6 @@
         dest: "{{ update_script_path }}"
         mode: '0755'
         force: yes
-        diff: no     # ✅ Suppress showing file differences
 
     - name: ▶️ Run update script asynchronously
       shell: bash "{{ update_script_path }}"
@@ -40,7 +39,6 @@
         dest: "{{ notify_script_path }}"
         mode: '0755'
         force: yes
-        diff: no     # ✅ Suppress showing file differences
 
     - name: ▶️ Run notify script
       shell: bash "{{ notify_script_path }}"
