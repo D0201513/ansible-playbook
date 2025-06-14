@@ -30,8 +30,8 @@ LOG_FILE="/tmp/patch_report_${TIMESTAMP}.log"
     case "$OS_ID" in
         ubuntu|debian|kali)
             echo "📦 Running apt update and upgrade..."
-            apt update -yq || echo "⚠️ apt update failed"
-            apt -y full-upgrade || true
+            apt update -yq | grep -vE '^W:|^WARNING:' || echo "⚠️ apt update failed"
+            apt -y full-upgrade | grep -vE '^W:|^WARNING:' || true
             ;;
         centos|rhel|fedora)
             echo "📦 Running yum/dnf upgrade..."
@@ -49,6 +49,13 @@ LOG_FILE="/tmp/patch_report_${TIMESTAMP}.log"
 
     echo ""
     echo "✅ Patch update completed successfully at $(date)."
+
+    # (Optional) call notify.sh for extra actions/logs
+    if [ -x /path/to/notify.sh ]; then
+        echo ""
+        echo "🔔 Running notify.sh helper script..."
+        /path/to/notify.sh >> "$LOG_FILE" 2>&1
+    fi
 
 } > "$LOG_FILE" 2>&1 || {
     echo "❌ Script failed. See log: $LOG_FILE" >&2
