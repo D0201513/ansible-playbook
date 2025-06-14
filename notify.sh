@@ -5,33 +5,44 @@ LOG_FILE="/tmp/notify.log"
 CURRENT_DATE=$(date '+%Y-%m-%d %H:%M:%S')
 HOSTNAME=$(hostname)
 
+log() {
+    echo "[$CURRENT_DATE] $1" >> "$LOG_FILE"
+}
+
 # Validate email format
 if ! [[ "$TO" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
-    echo "[$CURRENT_DATE] Invalid email address format: $TO. Skipping email." >> "$LOG_FILE"
+    log "❌ Invalid email address format: $TO. Skipping email."
     exit 1
 fi
 
-# Run updates
-UPDATE_OUTPUT=$(apt update && apt -y upgrade 2>&1)
+log "🔁 Starting notify script on $HOSTNAME"
+
+# Run apt update & upgrade with timeout (avoid hanging indefinitely)
+UPDATE_OUTPUT=$(timeout 300 bash -c 'apt update && apt -y upgrade' 2>&1)
 STATUS=$?
 
-SUBJECT="✅ System Patch Complete on $HOSTNAME"
-BODY="Ansible patching completed on $HOSTNAME at $CURRENT_DATE.
+# Limit apt output to last 100 lines to prevent email overflow
+TRIMMED_OUTPUT=$(echo "$UPDATE_OUTPUT" | tail -n 100)
 
-Update result:
-$UPDATE_OUTPUT
+SUBJECT="✅ System Patch Complete on $HOSTNAME"
+BODY="🕒 Date: $CURRENT_DATE
+📍 Host: $HOSTNAME
+
+📦 APT Update Result (last 100 lines):
+---------------------------------------
+$TRIMMED_OUTPUT
 "
 
-# Attempt to send mail
-echo "$BODY" | mail -s "$SUBJECT" "$TO"
-
-if [[ $? -eq 0 ]]; then
-    echo "[$CURRENT_DATE] Patch notification sent to $TO from $HOSTNAME." >> "$LOG_FILE"
+# Send mail
+if echo "$BODY" | mail -s "$SUBJECT" "$TO"; then
+    log "✅ Patch notification sent to $TO from $HOSTNAME."
 else
-    echo "[$CURRENT_DATE] Failed to send patch notification email to $TO." >> "$LOG_FILE"
+    log "❌ Failed to send patch notification email to $TO."
 fi
 
-# Log the apt command result
+# Log status of apt upgrade
 if [[ $STATUS -ne 0 ]]; then
-    echo "[$CURRENT_DATE] apt update/upgrade exited with error status $STATUS." >> "$LOG_FILE"
+    log "⚠️ APT update/upgrade exited with non-zero status $STATUS."
+else
+    log "✅ APT update/upgrade completed successfully."
 fi
