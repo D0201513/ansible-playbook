@@ -2,9 +2,6 @@
 set -euo pipefail
 
 TO="aravind_slcs_intern2@aravind.org"
-TIMESTAMP=$(date +%F_%H-%M-%S)
-LOG_FILE="/tmp/patch_report_${TIMESTAMP}.log"
-HOSTNAME=$(hostname)
 
 # Validate email
 if ! [[ "$TO" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
@@ -12,18 +9,9 @@ if ! [[ "$TO" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
     exit 1
 fi
 
-# APT lock wait protection
-LOCK_TIMEOUT=60
-WAIT_TIME=0
-while fuser /var/lib/dpkg/lock >/dev/null 2>&1 || fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
-    if [ "$WAIT_TIME" -ge "$LOCK_TIMEOUT" ]; then
-        echo "❌ APT lock held too long. Aborting." >> "$LOG_FILE"
-        exit 1
-    fi
-    echo "⏳ Waiting for APT lock... ($WAIT_TIME/$LOCK_TIMEOUT)" >> "$LOG_FILE"
-    sleep 5
-    WAIT_TIME=$((WAIT_TIME + 5))
-done
+TIMESTAMP=$(date +%F_%H-%M-%S)
+LOG_FILE="/tmp/patch_report_${TIMESTAMP}.log"
+HOSTNAME=$(hostname)
 
 {
     echo "=== 📋 Patch Report: $(date) on $HOSTNAME ==="
@@ -42,9 +30,17 @@ done
 
     case "$OS_ID" in
         ubuntu|debian|kali)
-            echo "📦 Running apt update and full-upgrade..."
-            apt update 2>&1 | grep -vE "^W:|^WARNING:"
-            apt -y full-upgrade 2>&1 | grep -vE "^W:|^WARNING:"
+            echo "📦 Running apt update and upgrade..."
+            apt update -yq 2>&1 | grep -vE '^(W:|WARNING:)' || echo "⚠️ apt update failed"
+            apt -y full-upgrade 2>&1 | grep -vE '^(W:|WARNING:)' || true
+            ;;
+        centos|rhel|fedora)
+            echo "📦 Running yum/dnf upgrade..."
+            if command -v dnf &>/dev/null; then
+                dnf -y upgrade 2>&1 | grep -vE '^(W:|WARNING:)' || true
+            else
+                yum -y update 2>&1 | grep -vE '^(W:|WARNING:)' || true
+            fi
             ;;
         *)
             echo "❌ Unsupported OS: $OS_ID"
@@ -54,7 +50,28 @@ done
 
     echo ""
     echo "✅ Patch update completed successfully at $(date)."
-} >> "$LOG_FILE" 2>&1
 
-# ✅ Call notify.sh to send report
-bash /tmp/notify.sh "$LOG_FILE"
+    # Optional: Run helper (no email here)
+    if [ -x /path/to/notify.sh ]; then
+        echo ""
+        echo "🔔 Running notify.sh helper script..."
+        /path/to/notify.sh >> "$LOG_FILE" 2>&1
+    fi
+
+} > "$LOG_FILE" 2>&1 || {
+    echo "❌ Script failed. See log: $LOG_FILE" >&2
+    exit 1
+}
+
+# Compose & send clean email
+SUBJECT="✅ Patch Success on $HOSTNAME"
+BODY=$(grep -vE '^(W:|WARNING:)' "$LOG_FILE")
+
+if command -v mail >/dev/null 2>&1; then
+    echo "$BODY" | mail -s "$SUBJECT" "$TO" || echo "⚠️ Failed to send email" >&2
+else
+    echo "⚠️ 'mail' command not available. Skipping email." >&2
+fi
+
+echo "✅ update.sh finished. Report saved to $LOG_FILE" >&2
+exit 0
