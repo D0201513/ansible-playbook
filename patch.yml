@@ -6,13 +6,18 @@
 
     - name: Copy update.sh to target machine
       copy:
-        src: update.sh       # from Git repo
-        dest: /tmp/update.sh # location on remote system
+        src: update.sh
+        dest: /tmp/update.sh
         mode: '0755'
 
+    - name: Wait to avoid 'text file busy' issue
+      pause:
+        seconds: 2
+
     - name: Run update script
-      shell: /tmp/update.sh
+      command: /tmp/update.sh
       register: update_result
+      ignore_errors: yes  # optional: to continue even if update fails
 
     - name: Show update result stdout
       debug:
@@ -28,9 +33,14 @@
         dest: /tmp/notify.sh
         mode: '0755'
 
+    - name: Wait to avoid 'text file busy' issue before notify
+      pause:
+        seconds: 2
+
     - name: Run notify script
-      shell: /tmp/notify.sh
+      command: /tmp/notify.sh
       register: notify_result
+      ignore_errors: yes  # optional: same reason
 
     - name: Show notify result stdout
       debug:
