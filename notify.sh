@@ -9,19 +9,19 @@ log() {
     echo "[$CURRENT_DATE] $1" >> "$LOG_FILE"
 }
 
-# Validate email format
+# Validate email
 if ! [[ "$TO" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
-    log "❌ Invalid email address format: $TO. Skipping email."
+    log "❌ Invalid email address format: $TO"
     exit 1
 fi
 
 log "🔁 Starting notify script on $HOSTNAME"
 
-# Run apt update & upgrade with timeout (avoid hanging indefinitely)
+# Run apt update & upgrade with timeout
 UPDATE_OUTPUT=$(timeout 300 bash -c 'apt update && apt -y upgrade' 2>&1)
 STATUS=$?
 
-# Limit apt output to last 100 lines to prevent email overflow
+# Trim output to prevent large email
 TRIMMED_OUTPUT=$(echo "$UPDATE_OUTPUT" | tail -n 100)
 
 SUBJECT="✅ System Patch Complete on $HOSTNAME"
@@ -33,16 +33,14 @@ BODY="🕒 Date: $CURRENT_DATE
 $TRIMMED_OUTPUT
 "
 
-# Send mail
 if echo "$BODY" | mail -s "$SUBJECT" "$TO"; then
-    log "✅ Patch notification sent to $TO from $HOSTNAME."
+    log "✅ Patch notification sent to $TO."
 else
-    log "❌ Failed to send patch notification email to $TO."
+    log "❌ Failed to send notification email to $TO."
 fi
 
-# Log status of apt upgrade
 if [[ $STATUS -ne 0 ]]; then
-    log "⚠️ APT update/upgrade exited with non-zero status $STATUS."
+    log "⚠️ APT exited with non-zero status $STATUS"
 else
-    log "✅ APT update/upgrade completed successfully."
+    log "✅ APT update/upgrade completed successfully"
 fi
