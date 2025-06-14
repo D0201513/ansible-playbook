@@ -11,9 +11,10 @@ fi
 
 TIMESTAMP=$(date +%F_%H-%M-%S)
 LOG_FILE="/tmp/patch_report_${TIMESTAMP}.log"
+HOSTNAME=$(hostname)
 
 {
-    echo "=== 📋 Patch Report: $(date) on $(hostname) ==="
+    echo "=== 📋 Patch Report: $(date) on $HOSTNAME ==="
     echo ""
 
     echo "🔍 Detecting OS..."
@@ -30,15 +31,15 @@ LOG_FILE="/tmp/patch_report_${TIMESTAMP}.log"
     case "$OS_ID" in
         ubuntu|debian|kali)
             echo "📦 Running apt update and upgrade..."
-            apt update -yq | grep -vE '^W:|^WARNING:' || echo "⚠️ apt update failed"
-            apt -y full-upgrade | grep -vE '^W:|^WARNING:' || true
+            apt update -yq 2>&1 | grep -vE '^(W:|WARNING:)' || echo "⚠️ apt update failed"
+            apt -y full-upgrade 2>&1 | grep -vE '^(W:|WARNING:)' || true
             ;;
         centos|rhel|fedora)
             echo "📦 Running yum/dnf upgrade..."
             if command -v dnf &>/dev/null; then
-                dnf -y upgrade || true
+                dnf -y upgrade 2>&1 | grep -vE '^(W:|WARNING:)' || true
             else
-                yum -y update || true
+                yum -y update 2>&1 | grep -vE '^(W:|WARNING:)' || true
             fi
             ;;
         *)
@@ -50,7 +51,7 @@ LOG_FILE="/tmp/patch_report_${TIMESTAMP}.log"
     echo ""
     echo "✅ Patch update completed successfully at $(date)."
 
-    # (Optional) call notify.sh for extra actions/logs
+    # Optional: Run helper (no email here)
     if [ -x /path/to/notify.sh ]; then
         echo ""
         echo "🔔 Running notify.sh helper script..."
@@ -62,8 +63,9 @@ LOG_FILE="/tmp/patch_report_${TIMESTAMP}.log"
     exit 1
 }
 
-SUBJECT="✅ Patch Success on $(hostname)"
-BODY=$(cat "$LOG_FILE")
+# Compose & send clean email
+SUBJECT="✅ Patch Success on $HOSTNAME"
+BODY=$(grep -vE '^(W:|WARNING:)' "$LOG_FILE")
 
 if command -v mail >/dev/null 2>&1; then
     echo "$BODY" | mail -s "$SUBJECT" "$TO" || echo "⚠️ Failed to send email" >&2
