@@ -1,33 +1,10 @@
 - name: Patch system and notify
   hosts: all
   become: yes
-  become_method: sudo
   tasks:
 
-    - name: Copy update.sh to target machine
-      copy:
-        src: update.sh             # Make sure this file is in your Ansible control node directory
-        dest: /tmp/update.sh       # Target path on remote
-        mode: '0755'
+    - name: Run update script
+      script: update.sh
 
-    - name: Wait to avoid text file busy error
-      pause:
-        seconds: 2
-
-    - name: Run update script using Bash
-      shell: bash /tmp/update.sh
-      register: update_result
-      ignore_errors: yes
-
-    - name: Show update result stdout
-      debug:
-        var: update_result.stdout_lines
-
-    - name: Show update result stderr (if any)
-      debug:
-        var: update_result.stderr_lines
-
-    - name: Check if patching was successful
-      fail:
-        msg: "❌ update.sh failed with non-zero return code"
-      when: update_result.rc != 0
+    - name: Run notify script
+      script: notify.sh
