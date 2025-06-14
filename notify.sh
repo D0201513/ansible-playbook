@@ -1,27 +1,21 @@
 #!/bin/bash
-set -euo pipefail
 
-TO="aravind_slcs_intern2@aravind.org"
-LOG_FILE="${1:-/tmp/patch_report_default.log}"
+# File: /path/to/notify.sh
+
+LOG_FILE="/tmp/notify_helper.log"
 CURRENT_DATE=$(date '+%Y-%m-%d %H:%M:%S')
 HOSTNAME=$(hostname)
 
-# Validate email
-if ! [[ "$TO" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
-    echo "❌ Invalid email address format. Aborting." >&2
-    exit 1
-fi
+# Logging function
+log() {
+    echo "[$CURRENT_DATE] $1" >> "$LOG_FILE"
+}
 
-if [ ! -f "$LOG_FILE" ]; then
-    echo "❌ Log file not found: $LOG_FILE" >&2
-    exit 1
-fi
+# Start logging
+log "🔁 notify.sh executed on $HOSTNAME"
 
-SUBJECT="✅ Patch Completed on $HOSTNAME"
-BODY=$(grep -vE '^W:|^WARNING:' "$LOG_FILE" | tail -n 100)
-
-if echo "$BODY" | mail -s "$SUBJECT" "$TO"; then
-    echo "✅ Patch notification sent to $TO."
-else
-    echo "❌ Failed to send patch notification to $TO." >&2
-fi
+# System info log (customize if needed)
+OS_INFO=$(grep '^PRETTY_NAME=' /etc/os-release | cut -d= -f2 | tr -d '"')
+log "🖥️  System Info: $OS_INFO"
+log "🕒 Timestamp: $CURRENT_DATE"
+log "✅ This script is only for helper logging. No mail is sent."
