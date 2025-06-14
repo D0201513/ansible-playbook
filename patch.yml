@@ -6,18 +6,18 @@
 
     - name: Copy update.sh to target machine
       copy:
-        src: update.sh
-        dest: /tmp/update.sh
+        src: update.sh             # Make sure this file is in your Ansible control node directory
+        dest: /tmp/update.sh       # Target path on remote
         mode: '0755'
 
-    - name: Wait to avoid 'text file busy' issue
+    - name: Wait to avoid text file busy error
       pause:
         seconds: 2
 
-    - name: Run update script
-      command: /tmp/update.sh
+    - name: Run update script using Bash
+      shell: bash /tmp/update.sh
       register: update_result
-      ignore_errors: yes  # optional: to continue even if update fails
+      ignore_errors: yes
 
     - name: Show update result stdout
       debug:
@@ -27,25 +27,7 @@
       debug:
         var: update_result.stderr_lines
 
-    - name: Copy notify.sh to target machine
-      copy:
-        src: notify.sh
-        dest: /tmp/notify.sh
-        mode: '0755'
-
-    - name: Wait to avoid 'text file busy' issue before notify
-      pause:
-        seconds: 2
-
-    - name: Run notify script
-      command: /tmp/notify.sh
-      register: notify_result
-      ignore_errors: yes  # optional: same reason
-
-    - name: Show notify result stdout
-      debug:
-        var: notify_result.stdout_lines
-
-    - name: Show notify result stderr (if any)
-      debug:
-        var: notify_result.stderr_lines
+    - name: Check if patching was successful
+      fail:
+        msg: "❌ update.sh failed with non-zero return code"
+      when: update_result.rc != 0
