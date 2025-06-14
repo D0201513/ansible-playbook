@@ -1,12 +1,32 @@
 #!/bin/bash
 set -euo pipefail
 
-LOG_FILE="/tmp/patch_report.log"
+TO="aravind_slcs_intern2@aravind.org"
+TIMESTAMP=$(date +%F_%H-%M-%S)
+LOG_FILE="/tmp/patch_report_${TIMESTAMP}.log"
 HOSTNAME=$(hostname)
-TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+
+# Validate email
+if ! [[ "$TO" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+    echo "❌ Invalid email address format. Aborting." >&2
+    exit 1
+fi
+
+# APT lock wait protection
+LOCK_TIMEOUT=60
+WAIT_TIME=0
+while fuser /var/lib/dpkg/lock >/dev/null 2>&1 || fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+    if [ "$WAIT_TIME" -ge "$LOCK_TIMEOUT" ]; then
+        echo "❌ APT lock held too long. Aborting." >> "$LOG_FILE"
+        exit 1
+    fi
+    echo "⏳ Waiting for APT lock... ($WAIT_TIME/$LOCK_TIMEOUT)" >> "$LOG_FILE"
+    sleep 5
+    WAIT_TIME=$((WAIT_TIME + 5))
+done
 
 {
-    echo "=== 📋 Patch Report: $TIMESTAMP on $HOSTNAME ==="
+    echo "=== 📋 Patch Report: $(date) on $HOSTNAME ==="
     echo ""
 
     echo "🔍 Detecting OS..."
@@ -22,17 +42,9 @@ TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 
     case "$OS_ID" in
         ubuntu|debian|kali)
-            echo "📦 Running apt update and upgrade..."
-            timeout 300 bash -c 'apt update -yq 2>&1 | grep -vE "^W:|^WARNING:"'
-            timeout 600 bash -c 'apt -y full-upgrade 2>&1 | grep -vE "^W:|^WARNING:"'
-            ;;
-        centos|rhel|fedora)
-            echo "📦 Running yum/dnf upgrade..."
-            if command -v dnf &>/dev/null; then
-                dnf -y upgrade | grep -vE "^Warning:"
-            else
-                yum -y update | grep -vE "^Warning:"
-            fi
+            echo "📦 Running apt update and full-upgrade..."
+            apt update 2>&1 | grep -vE "^W:|^WARNING:"
+            apt -y full-upgrade 2>&1 | grep -vE "^W:|^WARNING:"
             ;;
         *)
             echo "❌ Unsupported OS: $OS_ID"
@@ -42,5 +54,7 @@ TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 
     echo ""
     echo "✅ Patch update completed successfully at $(date)."
+} >> "$LOG_FILE" 2>&1
 
-} > "$LOG_FILE" 2>&1
+# ✅ Call notify.sh to send report
+bash /tmp/notify.sh "$LOG_FILE"
