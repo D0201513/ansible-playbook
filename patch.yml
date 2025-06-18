@@ -4,6 +4,9 @@
   vars:
     update_script_path: /tmp/update.sh
     notify_script_path: /tmp/notify.sh
+    wallpaper_src: images/aravind.jpeg
+    wallpaper_dest: /usr/share/backgrounds/aravind.jpeg
+    desktop_user: "{{ ansible_user | default('intern') }}"
 
   tasks:
 
@@ -56,3 +59,24 @@
           RC: {{ notify_result.rc }}
           STDERR: {{ notify_result.stderr | default('N/A') }}
       when: notify_result.rc != 0
+
+    - name: 🖼️ Copy wallpaper to remote machine
+      copy:
+        src: "{{ wallpaper_src }}"
+        dest: "{{ wallpaper_dest }}"
+        mode: '0644'
+
+    - name: 🧠 Set GNOME wallpaper using gsettings
+      become_user: "{{ desktop_user }}"
+      shell: |
+        export DISPLAY=:0
+        export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u {{ desktop_user }})/bus
+        gsettings set org.gnome.desktop.background picture-uri "file://{{ wallpaper_dest }}"
+      when: ansible_facts['env']['XDG_CURRENT_DESKTOP'] is defined and "'GNOME' in ansible_facts['env']['XDG_CURRENT_DESKTOP']"
+
+    - name: 🎨 Set XFCE wallpaper using xfconf-query
+      become_user: "{{ desktop_user }}"
+      shell: |
+        export DISPLAY=:0
+        xfconf-query --channel xfce4-desktop --property /backdrop/screen0/monitor0/image-path --set "{{ wallpaper_dest }}"
+      when: ansible_facts['env']['XDG_CURRENT_DESKTOP'] is defined and "'XFCE' in ansible_facts['env']['XDG_CURRENT_DESKTOP']"
