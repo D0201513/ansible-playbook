@@ -4,20 +4,30 @@
   vars:
     update_script_path: /tmp/update.sh
     notify_script_path: /tmp/notify.sh
-    wallpaper_path: /usr/share/backgrounds/aravind.jpeg
+    logo_path: /tmp/aravind.jpeg
 
   tasks:
-
-    - name: 📤 Copy update script to remote host
+    - name: 📤 Copy update script
       copy:
         src: files/update.sh
         dest: "{{ update_script_path }}"
         mode: '0755'
-        force: yes
+
+    - name: 📤 Copy notify script
+      copy:
+        src: files/notify.sh
+        dest: "{{ notify_script_path }}"
+        mode: '0755'
+
+    - name: 🖼️ Copy image file
+      copy:
+        src: files/aravind.jpeg
+        dest: "{{ logo_path }}"
+        mode: '0644'
 
     - name: ▶️ Run update script asynchronously
       shell: "{{ update_script_path }}"
-      async: 120
+      async: 300
       poll: 0
       register: update_async
       changed_when: false
@@ -27,38 +37,8 @@
         jid: "{{ update_async.ansible_job_id }}"
       register: update_status
       until: update_status.finished
-      retries: 10
+      retries: 60
       delay: 5
-      when: update_async.ansible_job_id is defined
 
-    - name: ❌ Fail if update script failed
-      fail:
-        msg: "❌ Update script failed with RC={{ update_status.rc }}"
-      when: update_status.rc != 0
-
-    - name: 📤 Copy notify script to remote host
-      copy:
-        src: files/notify.sh
-        dest: "{{ notify_script_path }}"
-        mode: '0755'
-        force: yes
-
-    - name: ▶️ Run notify script
+    - name: 📬 Notify completion
       shell: "{{ notify_script_path }}"
-      register: notify_status
-      changed_when: false
-
-    - name: 📬 Show notify script result
-      debug:
-        msg: "✅ Notify script finished with RC={{ notify_status.rc }}"
-
-    - name: ❌ Fail if notify script failed
-      fail:
-        msg: "❌ Notify script failed with RC={{ notify_status.rc }}"
-      when: notify_status.rc != 0
-
-    - name: 🖼️ Copy wallpaper to remote machine
-      copy:
-        src: files/images/aravind.jpeg
-        dest: "{{ wallpaper_path }}"
-        mode: '0644'
