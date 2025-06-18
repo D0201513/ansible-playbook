@@ -1,0 +1,34 @@
+- name: Patch system and notify
+  hosts: all
+  become: yes
+  vars:
+    update_script_path: /tmp/update.sh
+    notify_script_path: /tmp/notify.sh
+
+  tasks:
+    - name: 📤 Copy update.sh to target
+      copy:
+        src: files/update.sh
+        dest: "{{ update_script_path }}"
+        mode: '0755'
+
+    - name: 📤 Copy notify.sh to target
+      copy:
+        src: files/notify.sh
+        dest: "{{ notify_script_path }}"
+        mode: '0755'
+
+    - name: 🛠️ Replace placeholder path in update.sh with actual notify.sh path
+      replace:
+        path: "{{ update_script_path }}"
+        regexp: '/path/to/notify.sh'
+        replace: "{{ notify_script_path }}"
+
+    - name: ▶️ Run update.sh (includes patching + notification)
+      shell: "{{ update_script_path }}"
+      register: patch_output
+      ignore_errors: true
+
+    - name: 📄 Show patch output
+      debug:
+        var: patch_output.stdout_lines
