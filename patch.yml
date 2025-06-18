@@ -4,79 +4,61 @@
   vars:
     update_script_path: /tmp/update.sh
     notify_script_path: /tmp/notify.sh
-    wallpaper_src: images/aravind.jpeg
-    wallpaper_dest: /usr/share/backgrounds/aravind.jpeg
-    desktop_user: "{{ ansible_user | default('intern') }}"
+    wallpaper_path: /usr/share/backgrounds/aravind.jpeg
 
   tasks:
 
     - name: 📤 Copy update script to remote host
       copy:
-        src: update.sh
+        src: files/update.sh
         dest: "{{ update_script_path }}"
         mode: '0755'
         force: yes
 
     - name: ▶️ Run update script asynchronously
-      shell: bash "{{ update_script_path }}"
-      async: 600
-      poll: 10
-      register: update_result
-      ignore_errors: yes
+      shell: "{{ update_script_path }}"
+      async: 120
+      poll: 0
+      register: update_async
+      changed_when: false
 
     - name: ✅ Print update result status
-      debug:
-        msg: "✅ Update script finished with RC={{ update_result.rc }}"
+      async_status:
+        jid: "{{ update_async.ansible_job_id }}"
+      register: update_status
+      until: update_status.finished
+      retries: 10
+      delay: 5
+      when: update_async.ansible_job_id is defined
 
     - name: ❌ Fail if update script failed
       fail:
-        msg: >-
-          ❌ Update script failed.
-          RC: {{ update_result.rc }}
-          STDERR: {{ update_result.stderr | default('N/A') }}
-      when: update_result.rc != 0
+        msg: "❌ Update script failed with RC={{ update_status.rc }}"
+      when: update_status.rc != 0
 
     - name: 📤 Copy notify script to remote host
       copy:
-        src: notify.sh
+        src: files/notify.sh
         dest: "{{ notify_script_path }}"
         mode: '0755'
         force: yes
 
     - name: ▶️ Run notify script
-      shell: bash "{{ notify_script_path }}"
-      register: notify_result
-      ignore_errors: yes
+      shell: "{{ notify_script_path }}"
+      register: notify_status
+      changed_when: false
 
     - name: 📬 Show notify script result
       debug:
-        msg: "✅ Notify script finished with RC={{ notify_result.rc }}"
+        msg: "✅ Notify script finished with RC={{ notify_status.rc }}"
 
     - name: ❌ Fail if notify script failed
       fail:
-        msg: >-
-          ❌ Notify script failed.
-          RC: {{ notify_result.rc }}
-          STDERR: {{ notify_result.stderr | default('N/A') }}
-      when: notify_result.rc != 0
+        msg: "❌ Notify script failed with RC={{ notify_status.rc }}"
+      when: notify_status.rc != 0
 
     - name: 🖼️ Copy wallpaper to remote machine
       copy:
-        src: "{{ wallpaper_src }}"
-        dest: "{{ wallpaper_dest }}"
+        src: files/images/aravind.jpeg
+        dest: "{{ wallpaper_path }}"
         mode: '0644'
-
-    - name: 🧠 Set GNOME wallpaper using gsettings
-      become_user: "{{ desktop_user }}"
-      shell: |
-        export DISPLAY=:0
-        export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u {{ desktop_user }})/bus
-        gsettings set org.gnome.desktop.background picture-uri "file://{{ wallpaper_dest }}"
-      when: ansible_facts['env']['XDG_CURRENT_DESKTOP'] is defined and "'GNOME' in ansible_facts['env']['XDG_CURRENT_DESKTOP']"
-
-    - name: 🎨 Set XFCE wallpaper using xfconf-query
-      become_user: "{{ desktop_user }}"
-      shell: |
-        export DISPLAY=:0
-        xfconf-query --channel xfce4-desktop --property /backdrop/screen0/monitor0/image-path --set "{{ wallpaper_dest }}"
-      when: ansible_facts['env']['XDG_CURRENT_DESKTOP'] is defined and "'XFCE' in ansible_facts['env']['XDG_CURRENT_DESKTOP']"
