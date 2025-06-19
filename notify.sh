@@ -4,7 +4,6 @@ LOG_FILE="/tmp/notify_helper.log"
 CURRENT_DATE=$(date '+%Y-%m-%d %H:%M:%S')
 HOSTNAME=$(hostname)
 
-# Logging function
 log() {
     echo "[$CURRENT_DATE] $1" >> "$LOG_FILE"
 }
