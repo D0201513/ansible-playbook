@@ -14,14 +14,12 @@
         dest: "{{ update_script_path }}"
         mode: '0755'
 
-    - name: ▶️ Run update script asynchronously
+    - name: ▶️ Run update script
       shell: bash "{{ update_script_path }}"
-      async: 600
-      poll: 10
       register: update_result
       ignore_errors: yes
 
-    - name: 🧞 Print update result summary (only status)
+    - name: 🧞 Print update result summary
       debug:
         msg: "Update script finished with RC={{ update_result.rc }}"
 
