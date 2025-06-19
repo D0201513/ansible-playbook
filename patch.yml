@@ -8,13 +8,13 @@
   tasks:
     - name: 📤 Copy update.sh to target
       copy:
-        src: files/update.sh
+        src: update.sh       # ← Correct path (no 'files/')
         dest: "{{ update_script_path }}"
         mode: '0755'
 
     - name: 📤 Copy notify.sh to target
       copy:
-        src: files/notify.sh
+        src: notify.sh       # ← Correct path (no 'files/')
         dest: "{{ notify_script_path }}"
         mode: '0755'
 
