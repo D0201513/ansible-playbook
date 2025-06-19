@@ -54,12 +54,12 @@ HOSTNAME=$(hostname)
     if [ -x /tmp/notify.sh ]; then
         echo ""
         echo "🔔 Running notify.sh helper script..."
-        /tmp/notify.sh >> "$LOG_FILE" 2>&1
+        /tmp/notify.sh
     else
         echo "⚠️ notify.sh script not found or not executable."
     fi
 
-} > "$LOG_FILE" 2>&1
+} | tee "$LOG_FILE"
 
 # Compose & send email
 SUBJECT="✅ Patch Success on $HOSTNAME"
