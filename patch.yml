@@ -26,6 +26,8 @@
 
     - name: ▶️ Run update.sh (includes patching + notification)
       shell: "{{ update_script_path }}"
+      args:
+        executable: /bin/bash
       register: patch_output
       ignore_errors: true
 
