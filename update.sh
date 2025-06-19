@@ -3,7 +3,7 @@ set -euo pipefail
 
 TO="aravind_slcs_intern2@aravind.org"
 
-# Validate email
+# Validate email format
 if ! [[ "$TO" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
     echo "❌ Invalid email address format. Aborting." >&2
     exit 1
@@ -51,19 +51,17 @@ HOSTNAME=$(hostname)
     echo ""
     echo "✅ Patch update completed successfully at $(date)."
 
-    # Optional: Run helper (no email here)
-    if [ -x /path/to/notify.sh ]; then
+    if [ -x /tmp/notify.sh ]; then
         echo ""
         echo "🔔 Running notify.sh helper script..."
-        /path/to/notify.sh >> "$LOG_FILE" 2>&1
+        /tmp/notify.sh >> "$LOG_FILE" 2>&1
+    else
+        echo "⚠️ notify.sh script not found or not executable."
     fi
 
-} > "$LOG_FILE" 2>&1 || {
-    echo "❌ Script failed. See log: $LOG_FILE" >&2
-    exit 1
-}
+} > "$LOG_FILE" 2>&1
 
-# Compose & send clean email
+# Compose & send email
 SUBJECT="✅ Patch Success on $HOSTNAME"
 BODY=$(grep -vE '^(W:|WARNING:)' "$LOG_FILE")
 
@@ -73,5 +71,5 @@ else
     echo "⚠️ 'mail' command not available. Skipping email." >&2
 fi
 
-echo "✅ update.sh finished. Report saved to $LOG_FILE" >&2
+echo "✅ update.sh finished. Report saved to $LOG_FILE"
 exit 0
